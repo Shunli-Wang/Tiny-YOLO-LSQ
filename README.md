@@ -26,7 +26,7 @@ python train_tiny_qan.py \
     --quan_activation_bit 3
 ```
 Our Tiny-YOLO framework is defined as follow:
-![图片说明]()
+![](https://github.com/Shunli-Wang/Tiny-YOLO-LSQ/data/Tiny-yolo.png)
 
 ## Citation
 ```
@@ -37,12 +37,8 @@ Our Tiny-YOLO framework is defined as follow:
   year={2018}
 }
 @article{DBLP:journals/corr/abs-1902-08153,
-  author    = {Steven K. Esser and
-               Jeffrey L. McKinstry and
-               Deepika Bablani and
-               Rathinakumar Appuswamy and
-               Dharmendra S. Modha},
   title     = {Learned Step Size Quantization},
+  author    = {Steven K. Esser and Jeffrey L. McKinstry and Deepika Bablani and Rathinakumar Appuswamy and Dharmendra S. Modha},
   journal   = {CoRR},
   volume    = {abs/1902.08153},
   year      = {2019},
