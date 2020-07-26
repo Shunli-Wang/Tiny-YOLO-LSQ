@@ -1,0 +1,6 @@
+classes= 80
+train=/home/fair/Dataset/_Detection/COCO/trainvalno5k.txt
+valid=/home/fair/Dataset/_Detection/COCO/5k.txt
+names=data/coco.names
+backup=backup/
+eval=coco

@@ -1,0 +1,6 @@
+classes= 12
+train=/home/fair/Dataset/_Detection/DAC_2020_data_training/train_extend.txt
+valid=/home/fair/Dataset/_Detection/DAC_2020_data_training/val_extend.txt
+names=data/dac.names
+backup=backup/
+eval=dac
