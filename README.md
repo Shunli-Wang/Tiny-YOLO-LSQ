@@ -26,7 +26,7 @@ python train_tiny_qan.py \
     --quan_activation_bit 3
 ```
 Our Tiny-YOLO framework is defined as follow:
-![](https://github.com/Shunli-Wang/Tiny-YOLO-LSQ/data/Tiny-yolo.png)
+![Tiny-YOLO-LSQ](https://github.com/Shunli-Wang/Tiny-YOLO-LSQ/blob/master/data/Tiny-yolo.png)
 
 ## Citation
 ```
