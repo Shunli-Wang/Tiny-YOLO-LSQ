@@ -55,7 +55,9 @@ The training of the quantized network contains two phases.
 A full-precision model (fp-model) is trained frist, and then is the quantized model (q-model). The fp-model is loaded as the pre-trained model during the training of the q-model.  
 We provide the pre-trained fp-model in `./exps/fp_ckpt`, so you can directly run the quantization training by:
 ```bash
-python train.py  --exp_path 'exps/lsq_ckpt/' --quan_yaml 'config/yolov3-tiny_lsq.yaml' --fp_pretrained 'exps/fp_ckpt/fp_ckpt_94.pth'
+python train.py  --exp_path 'exps/lsq_ckpt/' \
+        --quan_yaml 'config/yolov3-tiny_lsq.yaml' \
+        --fp_pretrained 'exps/fp_ckpt/fp_ckpt_94.pth'
 # The fp_ckpt_94.pth achieves the best acc on the val set, so we adopt it as the pre-trained model to initialize the quantized model.
 ```
 
