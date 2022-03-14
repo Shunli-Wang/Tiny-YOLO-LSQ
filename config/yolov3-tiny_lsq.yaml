@@ -1,0 +1,40 @@
+quan_default:
+  act: # (default for all layers)
+    mode: lsq
+    bit: 3
+    per_channel: false
+    symmetric: false
+    all_positive: true
+  weight: # (default for all layers)
+    mode: lsq
+    bit: 3
+    per_channel: false
+    symmetric: true
+    all_positive: false
+excepts:
+  module_list.0.conv_0:  # (the first layer)
+    act: 
+      mode: lsq
+      bit: 0
+      per_channel: false
+      symmetric: false
+      all_positive: true
+    weight:
+      mode: lsq
+      bit: 3
+      per_channel: false
+      symmetric: true
+      all_positive: false
+  module_list.22.conv_22:  # (the last layer)
+    act: 
+      mode: lsq
+      bit: 9
+      per_channel: false
+      symmetric: false
+      all_positive: true
+    weight:
+      mode: lsq
+      bit: 3
+      per_channel: false
+      symmetric: true
+      all_positive: false

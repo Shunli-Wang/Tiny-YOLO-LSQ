@@ -8,9 +8,6 @@ import numpy as np
 
 from utils.parse_config import *
 from utils.utils import build_targets, to_cpu, non_max_suppression
-from utils.qan import QuanConv2d
-from utils.KMeans_Conv import KConv2d
-
 
 def create_modules(module_defs, opt):
     """
@@ -42,38 +39,6 @@ def create_modules(module_defs, opt):
                 modules.add_module(f"batch_norm_{module_i}", nn.BatchNorm2d(filters, momentum=0.9, eps=1e-5))
             if module_def["activation"] == "relu":
                 modules.add_module(f"relu_{module_i}", nn.ReLU())
-
-        # LSQ-net
-        if module_def["type"] == "Qconvolutional":
-            bn = int(module_def["batch_normalize"])
-            filters = int(module_def["filters"])
-            kernel_size = int(module_def["size"])
-            pad = (kernel_size - 1) // 2
-            addition_bit_flag = 0
-            if module_def.__contains__('quan_weitht_bit') and module_def.__contains__('quan_activation_bit'):
-                addition_bit_flag = 1
-                w_bit = int(module_def['quan_weitht_bit'])
-                a_bit = int(module_def['quan_activation_bit'])
-
-            modules.add_module(
-                f"Q_conv_{module_i}",
-                QuanConv2d(
-                    in_channels=output_filters[-1],
-                    out_channels=filters,
-                    kernel_size=kernel_size,
-                    quan_bit_w=opt.quan_weitht_bit if addition_bit_flag == 0 else w_bit,
-                    quan_bit_a=opt.quan_activation_bit if addition_bit_flag == 0 else a_bit,
-                    bias=not bn,
-                    padding=pad,
-                    stride=int(module_def["stride"])
-                ))
-            if bn:
-                modules.add_module(f"batch_norm_{module_i}", nn.BatchNorm2d(filters, momentum=0.9, eps=1e-5))
-            if module_def["activation"] == "relu":
-                modules.add_module(f"relu_{module_i}", nn.ReLU())
-            if module_def["activation"] == "leaky":
-                modules.add_module(f"leaky_{module_i}", nn.LeakyReLU(0.1))
-
 
         elif module_def["type"] == "maxpool":
             kernel_size = int(module_def["size"])
@@ -285,8 +250,6 @@ class Darknet(nn.Module):
         # ######
         # Get Data
         # ######
-        # data = {}
-        # data['img'] = x.cpu().data.numpy()
 
         img_dim = x.shape[2]  # Height of input image
         # ### np.save('Layer_outputs/' + 'img_' + str(x.shape) + '_.npy', x.cpu().data.numpy())
@@ -294,7 +257,7 @@ class Darknet(nn.Module):
         layer_outputs, yolo_outputs = [], []
         # layer_outputs_save = []
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
-            if module_def["type"] in ["Qconvolutional", "Kconvolutional", "convolutional", "upsample", "maxpool"]:
+            if module_def["type"] in ["Qconvolutional", "convolutional", "upsample", "maxpool"]:
                 x = module(x)
             elif module_def["type"] == "route":
                 x = torch.cat([layer_outputs[int(layer_i)] for layer_i in module_def["layers"].split(",")], 1)

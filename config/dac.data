@@ -1,6 +1,6 @@
 classes= 12
-train=<PATH to your Dataset>/DAC_2020_data_training/all.txt
-valid=<PATH to your Dataset>/_Detection/DAC_2020_data_training/val.txt
-names=data/dac.names
+train=./data/train.txt
+valid=./data/val.txt
+names=./data/dac.names
 backup=backup/
 eval=dac

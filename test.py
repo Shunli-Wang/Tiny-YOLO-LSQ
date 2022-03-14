@@ -5,20 +5,13 @@ from utils.utils import *
 from utils.datasets import *
 from utils.parse_config import *
 
-import os
-import sys
-import time
-import datetime
 import argparse
 import tqdm
+import yaml
+from utils.qan import find_modules_to_quantize, replace_module_by_names
 
 import torch
-from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision import transforms
 from torch.autograd import Variable
-import torch.optim as optim
-
 
 def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size, norm_flag):
     model.eval()
@@ -27,7 +20,11 @@ def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size
     # Note that in this case, we don't need data augment and multiscale options.
     dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False, norm_flag=norm_flag)
     dataloader = torch.utils.data.DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, num_workers=1, collate_fn=dataset.collate_fn
+        dataset, 
+        batch_size=batch_size, 
+        shuffle=True, 
+        num_workers=8, 
+        collate_fn=dataset.collate_fn
     )
 
     Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
@@ -47,24 +44,12 @@ def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size
         targets[:, 5] = targets[:, 5] * 288
 
         imgs = Variable(imgs.type(Tensor), requires_grad=False)
-        # np.save('Layer_outputs/' + 'gt_' + str(targets.shape) + '_.npy', targets)
-        # np.save('Layer_outputs/' + 'path' + '_.npy', list(paths))
-        # para = np.load('Layer_outputs/path_.npy')
 
         with torch.no_grad():
-            outputs = model(imgs)  # 8*10647*17(4position + 1confidence + 12class)
-            print(outputs.shape)
+            outputs = model(imgs)  # 8*10647*17 (4 position + 1 confidence + 12 class)
             outputs = non_max_suppression(outputs, conf_thres=conf_thres, nms_thres=nms_thres)
 
-            for output in outputs:
-                if output is not None:
-                    # One image two objects
-                    print(output.shape, output[:, 4])
-
-            print()
-
         sample_metrics += get_batch_statistics(outputs, targets, iou_threshold=iou_thres)
-    print('sample_metrics:', sample_metrics)
 
     if len(sample_metrics) == 0:
         return np.array([0, 0]), np.array([0, 0]), np.array([0, 0]), np.array([0, 0]), np.array([0, 0]), 0
@@ -75,57 +60,86 @@ def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size
 
     # Calculate IoU:cb
     IoU_total_ = IoU_total.sum() / IoU_total.shape[0]
-    print('IoU_total_', IoU_total_)
 
     return precision, recall, AP, f1, ap_class, IoU_total_
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", type=int, default=8, help="size of each image batch")
-    parser.add_argument("--model_def", type=str, default="config/yolov3-tiny.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/dac.data", help="path to data config file")
-    parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
+def parser_argument(parser):
+    # Model config
+    parser.add_argument("--model_def", type=str, default='config/yolov3-tiny.cfg', help="path to model cfg file")
+    parser.add_argument("--weights_path", type=str, help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/dac.names", help="path to class label file")
+    parser.add_argument("--quan_yaml", type=str, default=None, help="pass a yaml file to activate quan training")  # as a init_weight for Quan-Net
+    # Params
+    parser.add_argument("--batch_size", type=int, default=32, help="size of each image batch")
+    parser.add_argument("--img_size", type=int, default=512, help="size of each image dimension")
+    parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
+    parser.add_argument("--gpu", type=int, default=0, help="assign a gpu to this porject, start from 0")
+    # Dataset info
+    parser.add_argument("--data_config", type=str, default="config/dac.data", help="path to data config file")
+    parser.add_argument("--data_norm", type=bool, default=False, help="/255 for every pixel")
+    # Thres
     parser.add_argument("--iou_thres", type=float, default=0.5, help="iou threshold required to qualify as detected")
     parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.1, help="iou thresshold for non-maximum suppression")
-    parser.add_argument("--n_cpu", type=int, default=1, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
 
-    opt = parser.parse_args()
-    print(opt)
-    opt.weights_path = 'checkpoints/yolov3-tiny_ckpt_99.pth'  # 'weights/darknet53.conv.74'
+    cfg = parser.parse_args()
 
+    return cfg
+
+def create_model(cfg):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    data_config = parse_data_config(opt.data_config)
+    # Initiate model
+    model = Darknet(cfg.model_def, cfg).to(device)
+
+    return model, device
+
+def quantization(model, cfg):
+    # fp-model
+    if cfg.quan_yaml is None:
+        return model
+
+    # q-model
+    with open(cfg.quan_yaml, 'r') as load_f:
+        qcfg = yaml.load(load_f, Loader=yaml.FullLoader)
+
+    # Quantize the whole model
+    modules_to_replace = find_modules_to_quantize(model, qcfg)
+    model = replace_module_by_names(model, modules_to_replace)
+
+    return model
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    cfg = parser_argument(parser)
+
+    model, device = create_model(cfg)
+    model = quantization(model, cfg).to(device)
+
+    # Load weights
+    if cfg.weights_path.endswith(".pth"):
+        model.load_state_dict(torch.load(cfg.weights_path))
+        print('+++ Weights loaded from:', cfg.weights_path)
+
+    data_config = parse_data_config(cfg.data_config)
     valid_path = data_config["valid"]
     class_names = load_classes(data_config["names"])
 
-    # Initiate model
-    model = Darknet(opt.model_def).to(device)
-    if opt.weights_path.endswith(".weights"):
-        # Load darknet weights
-        model.load_darknet_weights(opt.weights_path)
-    else:
-        # Load checkpoint weights
-        model.load_state_dict(torch.load(opt.weights_path))
-
     print("Compute mAP...")
 
-    precision, recall, AP, f1, ap_class = evaluate(
+    precision, recall, AP, f1, ap_class, IoU_total = evaluate(
         model,
         path=valid_path,
-        iou_thres=opt.iou_thres,
-        conf_thres=opt.conf_thres,
-        nms_thres=opt.nms_thres,
-        img_size=opt.img_size,
-        batch_size=8,
+        iou_thres=cfg.iou_thres,
+        conf_thres=cfg.conf_thres,
+        nms_thres=cfg.nms_thres,
+        img_size=cfg.img_size,
+        batch_size=cfg.batch_size,
+        norm_flag=cfg.data_norm
     )
 
     print("Average Precisions:")
     for i, c in enumerate(ap_class):
         print(f"+ Class '{c}' ({class_names[c]}) - AP: {AP[i]}")
 
-    print(f"mAP: {AP.mean()}")
+    print(f"mAP: {AP.mean()}, IoU: {IoU_total}")

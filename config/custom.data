@@ -1,6 +1,0 @@
-classes= 3
-train=/home/fair/Dataset/_Detection/DAC_2020_data_training/all.txt
-valid=/home/fair/Dataset/_Detection/DAC_2020_data_training/val.txt
-names=data/dac.names
-backup=backup/
-eval=dac
