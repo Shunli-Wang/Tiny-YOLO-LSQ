@@ -35,7 +35,7 @@ cd Tiny-YOLO-LSQ
 ```
 
 **2\. Download dataset & Create links.**  
-You can download the whole dataset from DAC, [BaiduYun](https://pan.baidu.com/s/1VTfyDn4sDDLI6IqRsF7Ygg) [Code:whk6], or [TeraBox](https://terabox.com/s/1Htju6241YK3JEVhBHnez3g) [Code:ai1u]. Then unzip the dataset and creat a soft link.
+You can download the whole dataset from DAC, [BaiduYun](https://pan.baidu.com/s/1VTfyDn4sDDLI6IqRsF7Ygg) [whk6], or [TeraBox](https://terabox.com/s/1Htju6241YK3JEVhBHnez3g) [ai1u]. Then unzip the dataset and creat a soft link.
 ```bash
 tar zxvf DAC-LPODC-Dataset.tar.gz && rm DAC-LPODC-Dataset.tar.gz
 mv DAC-LPODC-Dataset /PATH/TO/
